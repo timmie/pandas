@@ -4,7 +4,8 @@ import re
 import nose
 import unittest
 
-from pandas import Series, DataFrame, date_range, DatetimeIndex, Timestamp
+from pandas import (Series, DataFrame, date_range, DatetimeIndex, Timestamp,
+                    Panel)
 from pandas.compat import range, long, lrange, lmap, u
 from pandas.core.common import notnull, isnull
 import pandas.core.common as com

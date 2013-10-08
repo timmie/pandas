@@ -57,6 +57,13 @@ def _skip_if_no_excelsuite():
     _skip_if_no_xlwt()
     _skip_if_no_openpyxl()
 
+def _skip_if_no_mpl():
+    '''pandas.tseries.converter imports matplotlib'''
+    try:
+        import matplotlib
+    except ImportError:
+        raise nose.SkipTest('matplotlib not installed, skipping')
+
 
 _seriesd = tm.getSeriesData()
 _tsd = tm.getTimeSeriesData()
@@ -286,6 +293,75 @@ class ExcelReaderTests(SharedItems, unittest.TestCase):
             df = xlsx.parse('Sheet1', index_col=0)
 
         self.assertTrue(f.closed)
+
+    def test_xlsx_table_hours(self):
+        #check if the hours are read incorrectly
+        _skip_if_no_xlrd()
+        _skip_if_no_openpyxl()
+        _skip_if_no_mpl()
+        import datetime as dt
+
+
+
+        # 1900 datemode file
+        filename = 'example_file_2013-07-25.xlsx'
+        pth = os.path.join(self.dirpath, filename)
+        xlsx = ExcelFile(pth)
+        # parse_dates=False is necessary to obtain right sorting of rows in df
+        # TODO: this must actually be skiprows=11, header=10
+#        df =xlsx.parse('min', skiprows=12, header=10, index_col=1,
+#                         parse_dates=False, date_parser=correct_date_time)
+        df =xlsx.parse('min', skiprows=12, header=10, index_col=1,
+                         parse_dates=False, date_parser=_correct_date_time)
+
+        df_start = df.index[0]
+        df_end = df.index[-1:]
+        # test: are the first/last index equal to the cell read in diretly by xlrd
+        excel_cells = read_excel_cell(pth)
+
+        xl_start = _offset_time(excel_cells[0])
+        xl_end = _offset_time(excel_cells[1])
+
+        self.assertEqual(df_start, xl_start)
+        self.assertEqual(df_end, xl_end)
+
+        #test Excel 1904 datemode
+        filename_1904 = 'example_file_2013-07-25_1904-dates.xlsx'
+        pth = os.path.join(self.dirpath, filename_1904)
+        xlsx = ExcelFile(pth)
+        # parse_dates=False is necessary to obtain right sorting of roes in df
+        # TODO: this must actually be skiprows=11
+        df =xlsx.parse('min', skiprows=12, header=10, index_col=1,
+                         parse_dates=False, date_parser=_correct_date_time)
+
+        df_start = df.index[0]
+        df_end = df.index[-1:]
+
+        excel_cells = read_excel_cell(pth)
+        xl_start = _offset_time(excel_cells[0])
+        xl_end = _offset_time(excel_cells[1])
+
+        # test: are the first/last index equal to the cell read in diretly
+        self.assertEqual(df_start, xl_start)
+        self.assertEqual(df_end, xl_end)
+
+        # test if a produced datetime is equal to a datetime directly produced by xlrd
+        daydt_str = filename.split('.')[0][-10:]
+        daydt = dt.datetime.strptime(daydt_str, '%Y-%m-%d')
+#
+        df['date'] = daydt
+        df['time'] = df.index
+
+        #TODO review this
+#        df['datetime'] = df.apply(lambda x: pd.datetime.combine(x['date'], x['time'], axis=1))
+
+#        df.set_index(['datetime'])
+#        import datetime as dt
+#        dt_test = dt.datetime.combine(daydt, excel_cells[1])
+
+#        pdt_test = df.index[-1]
+
+#        self.assertEqual(dt_test, pdt_test)
 
 
 class ExcelWriterBase(SharedItems):
